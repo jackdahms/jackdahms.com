@@ -1,0 +1,20 @@
+.main {
+	margin: auto;
+	width: 240;
+}
+
+h1 {
+	margin: 0;
+	font-family: monaco, sans-serif;
+	font-size: 60px;
+}
+
+p {
+	margin: 0;
+	line-height: 1.4em;
+}
+
+#hiddenlink {
+	color: black;
+	text-decoration: none;
+}
