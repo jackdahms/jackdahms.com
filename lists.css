@@ -6,7 +6,7 @@
 .column {
     border-left: 7px solid #DDDDDD;
     float: left;
-    text-align: center;
+    text-align: left;
     width: 33.33%;
 }
 
@@ -31,6 +31,7 @@
 
 #right {
     float: right;
+    text-align: right;
 }
 
 b {
@@ -52,7 +53,7 @@ ul {
     display: inline-block;
     list-style-type: none;
     margin: 0;
-    padding: 0;
+    padding: 0 0 0 60px;
     text-align: left;
 }
 
