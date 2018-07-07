@@ -25,6 +25,10 @@
     clear: both;
 }
 
+.sublist {
+    
+}
+
 #left {
     float: left;
 }
@@ -41,7 +45,7 @@ b {
 h2 {
     font-family: monaco, sans-serif;
     font-weight: normal;
-    padding-left: 30px;
+    padding-left: 20px;
     text-align: left;
 }
 
@@ -53,7 +57,7 @@ ul {
     display: inline-block;
     list-style-type: none;
     margin: 0;
-    padding: 0 0 0 60px;
+    padding: 0 0 0 40px;
     text-align: left;
 }
 
