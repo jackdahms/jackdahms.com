@@ -11,6 +11,7 @@ a, a:visited {
     font-size: 10vh;
     margin-left: 20vw;
     margin-top: 70vh;
+    outline: none;
     position: absolute;
     text-decoration: none;
 }
