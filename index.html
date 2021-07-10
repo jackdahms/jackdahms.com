@@ -1,5 +1,6 @@
 <html>
     <head>
+        <meta charset="UTF-8">
         <title>Jack Dahms</title>
         <link rel="stylesheet" type="text/css" href="index.css">
     </head>
@@ -42,8 +43,8 @@
                             SPRITE_HEIGHT,
                             Math.min(0, -window.screenX),
                             Math.min(0, -window.screenY),
-                            screen.width, 
-                            screen.height,
+                            Math.max(canvas.width, screen.width), 
+                            Math.max(canvas.height, screen.height),
                         );
 
                         sprite += 1;
