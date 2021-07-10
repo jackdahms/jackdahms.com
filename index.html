@@ -31,7 +31,6 @@
 
             async function main() {
                 while (run) {
-
                     if (time % 80 == 0) {
                         canvas.width = html.clientWidth;
                         canvas.height = html.clientHeight;
@@ -41,8 +40,8 @@
                             SPRITE_HEIGHT * Math.floor(sprite / GRID_SIZE),
                             SPRITE_WIDTH,
                             SPRITE_HEIGHT,
-                            -window.screenX,
-                            -window.screenY,
+                            Math.min(0, -window.screenX),
+                            Math.min(0, -window.screenY),
                             screen.width, 
                             screen.height,
                         );
