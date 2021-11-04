@@ -1,6 +1,6 @@
 .main {
 	margin: auto;
-	width: 240;
+	display: table;
 }
 
 audio {
