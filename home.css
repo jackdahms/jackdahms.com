@@ -18,6 +18,7 @@ p {
 
 @media screen and (min-width: 600px) {
 	.main {
+		background-color: red;
 		margin: auto;
 		display: table;
 	}
@@ -29,6 +30,7 @@ p {
 
 @media screen and (max-width: 600px) {
 	.main {
+		background-color: blue;
 		margin: 20px;
 	}
 
