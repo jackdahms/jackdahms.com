@@ -21,6 +21,7 @@ window.chartColors = [
 ];
 
 let chart = null;
+let roundsAddedToChart = new Set([1]); // Track which rounds have been added to chart
 let config = {
   type: 'line',
   data: {
@@ -109,6 +110,14 @@ function keepDropdownOpen(e) {
 
 function createScoreInputListener(player) {
   return function() {
+    let round = parseInt($(this).attr("round"));
+
+    // Check if this is the first time any input in this round is being changed
+    if (!roundsAddedToChart.has(round)) {
+      addRowToChart();
+      roundsAddedToChart.add(round);
+    }
+
     // for each round in the table
     let data = [0];
     for (let i = 1; i < $("tr.round").length + 1; i++) {
@@ -118,6 +127,25 @@ function createScoreInputListener(player) {
 
     config.data.datasets[player-1].data = data.slice(0, getLatestRoundWithValidData(player) + 1);
     chart.update();
+
+    let totalRounds = $("tr.round").length;
+    if (round == totalRounds) {
+      // Check if all turn-inputs in the current row are filled
+      let inputs = $(`input[round=${round}]`);
+      let allInputsFilled = true;
+      
+      inputs.each(function() {
+        if ($(this).val() === '' || $(this).val() === undefined || $(this).val() === null) {
+          allInputsFilled = false;
+          return false;
+        }
+      });
+      
+      if (allInputsFilled && inputs.length > 0) {
+        addRowToTable();
+      }
+    }
+
     saveGame();
   }
 }
@@ -133,7 +161,7 @@ function addPlayer(e) {
   
   let addInputElement = function(i, element) {
     if ($(this).children().length < 2*count+1) {
-      let input = $("<input/>").addClass("turn-input").attr("player", count).attr("round", i).attr("type", "number");
+      let input = $("<input/>").addClass("turn-input").attr("player", count).attr("round", i+1).attr("type", "number");
       $(this).append($("<td>").append(input));
       $(this).append($("<td>0</td>").attr("id", `${count}-${i+1}`));
     } else {
@@ -221,18 +249,19 @@ function removePlayer(e) {
   saveGame();
 }
 
-function nextTurn() {
+function addRowToTable() {
   let row = $("<tr></tr>").addClass("round");
   let playerCount = parseInt($("#player-count").text());
-  let round = $("tr").length - 1;
-  $("<td></td>").addClass("round-td").text(round + ":").css("font-weight", "bold").appendTo(row);
+  let newRound = $("tr.round").length + 1;
+  
+  $("<td></td>").addClass("round-td").text(newRound + ":").css("font-weight", "bold").appendTo(row);
   for (let i = 1; i <= playerCount; i++) {
-    let input = $("<input/>").addClass("turn-input").attr("player", i).attr("round", round).attr("type", "number");
+    let input = $("<input/>").addClass("turn-input").attr("player", i).attr("round", newRound).attr("type", "number");
     $("<td></td>").append(input).appendTo(row);
-    $("<td>0</td>").attr("id", `${i}-${round}`).appendTo(row);
+    $("<td>0</td>").attr("id", `${i}-${newRound}`).appendTo(row);
   }
   row.appendTo("table");
-  
+
   // Hide scores for "nonexistant" players (so if a removed player is added back they have a score for the round)
   for (let i = parseInt($("#player-count").text()) + 1; i <= playerCount; i++) {
     $(".round").eq(-1).children().eq(2*i).hide();
@@ -241,17 +270,25 @@ function nextTurn() {
   
   // Update scores for newly added row
   for (let i = 1; i <= playerCount; i++) {
-    updateScore(i, round);
+    updateScore(i, newRound);
   }
   
   // Set previous turns inputs to new scorebox
   for (let player = 1; player <= playerCount; player++) {
     $(`input[player=${player}]`).on("input", createScoreInputListener(player));
   }
-  
+}
+
+function addRowToChart() {
+  let round = $("tr.round").length;
   config.data.labels.push(round);
   chart.update();
   saveGame();
+}
+
+function nextTurn() {
+  addRowToTable();
+  addRowToChart();
 }
 
 function calculateScore(player, round) {
@@ -280,6 +317,7 @@ function resetGame() {
 
   config.data.labels = [0];
   config.data.datasets = [];
+  roundsAddedToChart.clear(); // Clear the tracking when resetting
   chart.update();
   
   $(".player-name-div").remove();  
@@ -421,7 +459,6 @@ $(function() {
   let ctx = $("#chart"); 
   chart = new Chart(ctx, config);
   
-  $("#next-turn-button").click(nextTurn);
   $("#plus-button").click(addPlayer);
   $("#minus-button").click(removePlayer);
   $("#reset-button").click(resetGame);
