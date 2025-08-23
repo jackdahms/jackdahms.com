@@ -82,23 +82,19 @@ tr:nth-child(2n+4) > td {
 }
 
 /*
- * Rounded corners in table headers/alternating rows
+ * Rounded corners in table header
  */
-td:first-child { border-top-left-radius: 5px; }
-td:last-child { border-top-right-radius: 5px; }
-td:first-child { border-bottom-left-radius: 5px; }
-td:last-child { border-bottom-right-radius: 5px; }
-#heada-row > th:first-child {
-  border-bottom-left-radius: 5px;
-}
-#heada-row > th:last-child {
-  border-bottom-right-radius: 5px;
-}
 #playa-row > th:first-child {
   border-top-left-radius: 5px;
 }
 #playa-row > th:last-child {
   border-top-right-radius: 5px;
+}
+#heada-row > th:first-child {
+  border-bottom-left-radius: 5px;
+}
+#heada-row > th:last-child {
+  border-bottom-right-radius: 5px;
 }
 
 /*
@@ -129,4 +125,27 @@ input[type=number] {
 
 .title-box a {
   font-size: 0.9rem;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Add left border to the first cell in each round row */
+tr.round td:first-child {
+  border-left: 1px solid #CCC;
+}
+
+/* Bottom border and rounded corners for last row */
+tr.round:last-of-type td {
+  border-bottom: 1px solid #CCC;
+}
+
+tr.round:last-of-type td:first-child {
+  border-bottom-left-radius: 5px;
+}
+
+tr.round:last-of-type td:last-child {
+  border-bottom-right-radius: 5px;
 }
