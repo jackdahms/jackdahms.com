@@ -435,12 +435,10 @@ function loadGame() {
     $("input.player-name").last().trigger("input");
   }
 
+  nextTurn();
   let k = 0;
   while (k < scores.length) {
-    //if (k > 0) nextTurn();
-    nextTurn();
     for (let j = 0; j < names.length; j++) {
-      //if (scores[k] == "") scores[k] = 0;
       $(".turn-input").eq(k).val(scores[k]);
       $(".turn-input").eq(k).trigger("input");
       k++;
