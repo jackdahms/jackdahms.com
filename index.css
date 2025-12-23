@@ -13,21 +13,19 @@ td {
 }
 
 td:first-child {
-  padding-left: 3px
-}
-
-td:nth-child(2n + 1) {
-  padding-right: 1%;
-  border-right: 1px solid #CCC;
+  padding-left: 3px;
+  text-align: left;
+  font-weight: bold;
+  color: #004477;
 }
 
 th {
   background: #004477;
   color: #EEE;
-  text-align: right;
+  text-align: center;
 }
 
-tr:nth-child(2n+4) > td {
+.player-row:nth-child(2n) > td {
   background-color: #EEE; 
 }
 
@@ -46,25 +44,17 @@ tr:nth-child(2n+4) > td {
   width: 12em;
 }
 
-.round-td {
+.player-name-cell {
   color: #004477;
+  font-weight: bold;
 }
 
-.subcol {
-  display: inline-block;
-  transform: rotate(-45deg);
-}
-
-#heada-row {
+#header-row {
   height: 3em;
 }
 
-#heada-row > th:nth-child(2n + 1) {
-  padding-right: 1%;
-}
-
-#playa-row > th {
-  padding-right: 10px
+#header-row > th {
+  padding: 10px 5px;
 }
 
 /*
@@ -84,17 +74,11 @@ tr:nth-child(2n+4) > td {
 /*
  * Rounded corners in table header
  */
-#playa-row > th:first-child {
+#header-row > th:first-child {
   border-top-left-radius: 5px;
 }
-#playa-row > th:last-child {
+#header-row > th:last-child {
   border-top-right-radius: 5px;
-}
-#heada-row > th:first-child {
-  border-bottom-left-radius: 5px;
-}
-#heada-row > th:last-child {
-  border-bottom-right-radius: 5px;
 }
 
 /*
@@ -132,20 +116,26 @@ table {
   border-spacing: 0;
 }
 
-/* Add left border to the first cell in each round row */
-tr.round td:first-child {
+.player-row td {
+  border-right: 1px solid #CCC;
+  border-top: 1px solid #CCC;
+  padding: 5px;
+}
+
+/* Add left border to the first cell in each player row */
+.player-row td:first-child {
   border-left: 1px solid #CCC;
 }
 
 /* Bottom border and rounded corners for last row */
-tr.round:last-of-type td {
+.player-row:last-of-type td {
   border-bottom: 1px solid #CCC;
 }
 
-tr.round:last-of-type td:first-child {
+#header-row > th:first-child {
   border-bottom-left-radius: 5px;
 }
 
-tr.round:last-of-type td:last-child {
+.player-row:last-of-type td:last-child {
   border-bottom-right-radius: 5px;
 }

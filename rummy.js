@@ -96,19 +96,63 @@ function keepDropdownOpen(e) {
   } 
 }
 
+function setupInputTabNavigation() {
+  // Set up custom tab navigation for turn inputs
+  $(document).off('keydown', '.turn-input').on('keydown', '.turn-input', function(e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      
+      let currentPlayer = parseInt($(this).attr('player'));
+      let currentRound = parseInt($(this).attr('round'));
+      let playerCount = parseInt($("#player-count").text());
+      
+      let nextPlayer, nextRound;
+      
+      if (e.shiftKey) {
+        // Shift+Tab: go to previous player, same round (or previous round if at top)
+        if (currentPlayer > 1) {
+          nextPlayer = currentPlayer - 1;
+          nextRound = currentRound;
+        } else {
+          // At top player, go to last player of previous round
+          nextPlayer = playerCount;
+          nextRound = currentRound - 1;
+        }
+      } else {
+        // Tab: go to next player, same round (or next round if at bottom)
+        if (currentPlayer < playerCount) {
+          nextPlayer = currentPlayer + 1;
+          nextRound = currentRound;
+        } else {
+          // At bottom player, go to first player of next round
+          nextPlayer = 1;
+          nextRound = currentRound + 1;
+        }
+      }
+      
+      // Find and focus the target input
+      let targetInput = $(`input[player="${nextPlayer}"][round="${nextRound}"]`);
+      if (targetInput.length > 0) {
+        targetInput.focus();
+      }
+    }
+  });
+}
+
 function createScoreInputListener(player) {
   return function() {
     let round = parseInt($(this).attr("round"));
 
     // Check if this is the first time any input in this round is being changed
     if (!roundsAddedToChart.has(round)) {
-      addRowToChart();
+      addColToChart();
       roundsAddedToChart.add(round);
     }
 
     // for each round in the table
     let data = [0];
-    for (let i = 1; i < $("tr.round").length + 1; i++) {
+    let totalRounds = $("#header-row").children().length - 1; // subtract 1 for player header
+    for (let i = 1; i <= totalRounds; i++) {
       updateScore(player, i); // update cum score
       data.push(calculateScore(player, i));
     }
@@ -116,9 +160,8 @@ function createScoreInputListener(player) {
     config.data.datasets[player-1].data = data.slice(0, getLatestRoundWithValidData(player) + 1);
     chart.update();
 
-    let totalRounds = $("tr.round").length;
     if (round == totalRounds) {
-      // Check if all turn-inputs in the current row are filled
+      // Check if all turn-inputs in the current column are filled
       let inputs = $(`input[round=${round}]`);
       let allInputsFilled = true;
       
@@ -130,7 +173,7 @@ function createScoreInputListener(player) {
       });
       
       if (allInputsFilled && inputs.length > 0) {
-        addRowToTable();
+        addColToTable();
       }
     }
 
@@ -147,44 +190,33 @@ function addPlayer(e) {
   }
   $("#player-count").text(count);
   
-  let addInputElement = function(i, element) {
-    if ($(this).children().length < 2*count+1) {
-      let input = $("<input/>").addClass("turn-input").attr("player", count).attr("round", i+1).attr("type", "number");
-      $(this).append($("<td>").append(input));
-      $(this).append($("<td>0</td>").attr("id", `${count}-${i+1}`));
-    } else {
-      $(this).children().eq(2*count-1).show();
-      $(this).children().eq(2*count).show();
-    }
-  }
-  
-  // if there are any hidden players (player row has a spacer and then a column for every player)
-  if (count+1 <= $("#playa-row").children().length) {
-    // Un-round previous table corners
-    $("#playa-row").children().eq(count-1).css("border-top-right-radius", "0px");
-    $("#heada-row").children().eq(2*count-2).css("border-bottom-right-radius", "0px");
-    $(".round").each(function() {
-      $(this).children().eq(2*count-2).css("border-top-right-radius", "0px");
-      $(this).children().eq(2*count-2).css("border-bottom-right-radius", "0px");
-    });
-    
-    $("#playa-row").children().eq(count).show();
-    $("#heada-row").children().eq(2*count-1).show();
-    $("#heada-row").children().eq(2*count).show();
+  // Check if player row already exists (hidden)
+  let existingRow = $("#player-rows").children().eq(count - 1);
+  if (existingRow.length > 0) {
+    existingRow.show();
     $(".dropdown-menu").children().eq(count).show();
-    $(".round").each(addInputElement);
-    
     addPlayerToChart(count);
-    config.data.datasets[count-1].label = $(".dropdown-menu").children().eq(count).find("input").val(); // update chart's player name
+    config.data.datasets[count-1].label = $(".dropdown-menu").children().eq(count).find("input").val();
   } else {
-    $("#playa-row").append($("<th>Playa " + count + "</th>").attr("colspan", 2));
-    $("#heada-row").append($("<th>").append($("<span>turn</span>").addClass("subcol")));
-    $("#heada-row").append($("<th>").append($("<span>cum.</span>").addClass("subcol")));
-    $(".round").each(addInputElement); // Add input elements to existing rounds
+    // Create new player row
+    let playerRow = $("<tr>").addClass("player-row").attr("player", count);
+    let playerNameCell = $("<td>").addClass("player-name-cell").text("Playa " + count);
+    playerRow.append(playerNameCell);
+    
+    // Add cells for existing rounds
+    let roundCount = $("#header-row").children().length - 1; // subtract 1 for player header
+    for (let round = 1; round <= roundCount; round++) {
+      let input = $("<input/>").addClass("turn-input").attr("player", count).attr("round", round).attr("type", "number");
+      let inputCell = $("<td>").append(input);
+      playerRow.append(inputCell);
+    }
+    
+    $("#player-rows").append(playerRow);
 
     // Add change listeners to player's inputs
     let player = count;
     $("input[player=" + player + "]").on("input", createScoreInputListener(player));
+    setupInputTabNavigation();
     addPlayerToChart(player);
     
     let dropdownItem = $("<div>").addClass(["input-group", "input-group-sm", "dropdown-item", "player-name-div"]);
@@ -193,7 +225,7 @@ function addPlayer(e) {
     let input = $("<input>").addClass(["form-control", "player-name"]).attr({"type": "text", "aria-label": "small", value: "Playa " + player});
     input.on("input", function() {
       let player = parseInt($(this).prev().text().split(" ")[1]);
-      $("#playa-row").children().eq(player).text($(this).val()); // Update table header
+      $("tr[player=" + player + "] .player-name-cell").text($(this).val()); // Update table row
       config.data.datasets[player-1].label = $(this).val(); // Update chart
       chart.update();
       saveGame();
@@ -208,26 +240,12 @@ function addPlayer(e) {
 function removePlayer(e) {
   let count = parseInt($("#player-count").text());
   if (count > 2) {
-    // Hide input elements so we can save their scores/name in case they want to add them back
-    $("#playa-row").children().eq(count).hide();
-    $("#heada-row").children().eq(2*count-1).hide();
-    $("#heada-row").children().eq(2*count).hide();
-    $(".round").each(function() {
-      $(this).children().eq(2*count-1).hide();
-      $(this).children().eq(2*count).hide();
-    });
+    // Hide player row so we can save their scores/name in case they want to add them back
+    $("tr[player=" + count + "]").hide();
     $(".dropdown-menu").children().eq(count).hide();
     
     count--;
     $("#player-count").text(count);
-    
-    // Round correct table corners
-    $("#playa-row").children().eq(count).css("border-top-right-radius", "5px");
-    $("#heada-row").children().eq(2*count).css("border-bottom-right-radius", "5px");
-    $(".round").each(function() {
-      $(this).children().eq(2*count).css("border-top-right-radius", "5px");
-      $(this).children().eq(2*count).css("border-bottom-right-radius", "5px");
-    });
     
     config.data.datasets.pop();
     chart.update();
@@ -237,46 +255,37 @@ function removePlayer(e) {
   saveGame();
 }
 
-function addRowToTable() {
-  let row = $("<tr></tr>").addClass("round");
+function addColToTable() {
   let playerCount = parseInt($("#player-count").text());
-  let newRound = $("tr.round").length + 1;
+  let newRound = $("#header-row").children().length; // current round count including player header
   
-  $("<td></td>").addClass("round-td").text(newRound + ":").css("font-weight", "bold").appendTo(row);
+  // Add round header
+  $("#header-row").append($("<th>").text("R" + newRound));
+  
+  // Add input cell to each player row
   for (let i = 1; i <= playerCount; i++) {
     let input = $("<input/>").addClass("turn-input").attr("player", i).attr("round", newRound).attr("type", "number");
-    $("<td></td>").append(input).appendTo(row);
-    $("<td>0</td>").attr("id", `${i}-${newRound}`).appendTo(row);
-  }
-  row.appendTo("table");
-
-  // Hide scores for "nonexistant" players (so if a removed player is added back they have a score for the round)
-  for (let i = parseInt($("#player-count").text()) + 1; i <= playerCount; i++) {
-    $(".round").eq(-1).children().eq(2*i).hide();
-    $(".round").eq(-1).children().eq(2*i+1).hide();
+    let inputCell = $("<td>").append(input);
+    $("tr[player=" + i + "]").append(inputCell);
   }
   
-  // Update scores for newly added row
-  for (let i = 1; i <= playerCount; i++) {
-    updateScore(i, newRound);
-  }
-  
-  // Set previous turns inputs to new scorebox
+  // Set change listeners for new inputs
   for (let player = 1; player <= playerCount; player++) {
-    $(`input[player=${player}]`).on("input", createScoreInputListener(player));
+    $("input[player=" + player + "][round=" + newRound + "]").on("input", createScoreInputListener(player));
   }
+  setupInputTabNavigation();
 }
 
-function addRowToChart() {
-  let round = $("tr.round").length;
+function addColToChart() {
+  let round = $("#header-row").children().length - 1; // subtract 1 for player header
   config.data.labels.push(round);
   chart.update();
   saveGame();
 }
 
 function nextTurn() {
-  addRowToTable();
-  addRowToChart();
+  addColToTable();
+  addColToChart();
 }
 
 function calculateScore(player, round) {
@@ -294,14 +303,14 @@ function calculateScore(player, round) {
 }
 
 function updateScore(player, round) {
-  $(`#${player}-${round}`).text(calculateScore(player, round));
+  // Score is now calculated and displayed in chart, not in table cells
+  // This function is kept for compatibility but doesn't update table cells
 }
 
 function resetGame() {
-  $("tr").remove();
-  let playaRow = $("<tr>").attr("id", "playa-row").addClass("rounded").append("<th>");
-  let headaRow = $("<tr>").attr("id", "heada-row").addClass("rounded").append("<th>");
-  $("table").append(playaRow).append(headaRow);
+  // Clear table content
+  $("#header-row").empty().append($("<th>").text("Player")).append($("<th>").text("R1"));
+  $("#player-rows").empty();
 
   config.data.labels = [0];
   config.data.datasets = [];
@@ -314,7 +323,9 @@ function resetGame() {
   for (let i = 0; i < playerCount; i++) {
     addPlayer();
   }
-  nextTurn();
+  // Add initial chart label for round 1 (since R1 is already in HTML)
+  config.data.labels.push(1);
+  roundsAddedToChart.add(1);
   chart.update();
   saveGame();
 }
@@ -381,8 +392,8 @@ function toggleDarkMode() {
 
 function saveGame() {
   let playerCount = parseInt($("#player-count").text());
-  let names = $("#playa-row").children("th:not(:first-child)").map((i, e) => e.innerText).get();
-  let roundCount = $("tr.round").length;
+  let names = $(".player-name-cell").map((i, e) => e.innerText).get();
+  let roundCount = $("#header-row").children().length - 1; // subtract 1 for player header
   let scores = $(".turn-input").map((i, e) => e.value).get(); 
   let stateString = playerCount + majorDelimiter 
                   + names.join(minorDelimiter) + majorDelimiter 
@@ -450,9 +461,14 @@ $(function() {
   $("#reset-button").click(resetGame);
 
   if (!loadGame()) {
-    nextTurn();
+    // Add initial chart label for round 1 (since R1 is already in HTML)
+    config.data.labels.push(1);
+    roundsAddedToChart.add(1);
     addPlayer();
     addPlayer();
+    setupInputTabNavigation();
+  } else {
+    setupInputTabNavigation();
   }
   
   //toggleDarkMode();
