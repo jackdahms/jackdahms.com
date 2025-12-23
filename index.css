@@ -149,3 +149,22 @@ tr.round:last-of-type td:first-child {
 tr.round:last-of-type td:last-child {
   border-bottom-right-radius: 5px;
 }
+
+/* Editable player name inputs in table header */
+.player-name-input {
+  background: #004477;
+  color: #EEE;
+  border: none;
+  text-align: right;
+  font-weight: bold;
+  font-size: inherit;
+  font-family: inherit;
+  width: 100%;
+  padding: 8px 10px 8px 8px;
+  outline: none;
+}
+
+.player-name-input:focus {
+  background: #0066aa;
+  color: #FFF;
+}

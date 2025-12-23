@@ -177,28 +177,46 @@ function addPlayer(e) {
     addPlayerToChart(count);
     config.data.datasets[count-1].label = $(".dropdown-menu").children().eq(count).find("input").val(); // update chart's player name
   } else {
-    $("#playa-row").append($("<th>Playa " + count + "</th>").attr("colspan", 2));
+    // Create table header with editable input
+    let playerNameInput = $("<input>").addClass("player-name-input").attr({"type": "text", "value": "Playa " + count, "player": count});
+    let headerCell = $("<th>").attr("colspan", 2).append(playerNameInput);
+    $("#playa-row").append(headerCell);
+    
     $("#heada-row").append($("<th>").append($("<span>turn</span>").addClass("subcol")));
     $("#heada-row").append($("<th>").append($("<span>cum.</span>").addClass("subcol")));
     $(".round").each(addInputElement); // Add input elements to existing rounds
 
     // Add change listeners to player's inputs
     let player = count;
-    $("input[player=" + player + "]").on("input", createScoreInputListener(player));
+    $("input[player=" + player + "]:not(.player-name-input)").on("input", createScoreInputListener(player));
     addPlayerToChart(player);
     
-    let dropdownItem = $("<div>").addClass(["input-group", "input-group-sm", "dropdown-item", "player-name-div"]);
-    let prepend = $("<div>").addClass("input-group-prepend");
-    let span = $("<span>").addClass("input-group-text").text("Player " + player + ":");
-    let input = $("<input>").addClass(["form-control", "player-name"]).attr({"type": "text", "aria-label": "small", value: "Playa " + player});
-    input.on("input", function() {
-      let player = parseInt($(this).prev().text().split(" ")[1]);
-      $("#playa-row").children().eq(player).text($(this).val()); // Update table header
+    // Add change listener for player name input in table header
+    playerNameInput.on("input", function() {
+      let player = parseInt($(this).attr("player"));
       config.data.datasets[player-1].label = $(this).val(); // Update chart
+      // Update corresponding dropdown input
+      $(".dropdown-menu").children().eq(player).find("input").val($(this).val());
       chart.update();
       saveGame();
     });
-    dropdownItem.append(prepend.append(span)).append(input);
+    
+    // Create dropdown player name input
+    let dropdownItem = $("<div>").addClass(["input-group", "input-group-sm", "dropdown-item", "player-name-div"]);
+    let prepend = $("<div>").addClass("input-group-prepend");
+    let span = $("<span>").addClass("input-group-text").text("Player " + player + ":");
+    let dropdownInput = $("<input>").addClass(["form-control", "player-name"]).attr({"type": "text", "aria-label": "small", value: "Playa " + player});
+    dropdownInput.on("input", function() {
+      let player = parseInt($(this).prev().text().split(" ")[1]);
+      let newName = $(this).val();
+      // Update table header input
+      $("#playa-row").children().eq(player).find("input").val(newName);
+      // Update chart
+      config.data.datasets[player-1].label = newName;
+      chart.update();
+      saveGame();
+    });
+    dropdownItem.append(prepend.append(span)).append(dropdownInput);
     dropdownItem.insertBefore($(".dropdown-menu").children().last());
   }
   chart.update();
@@ -263,7 +281,7 @@ function addRowToTable() {
   
   // Set previous turns inputs to new scorebox
   for (let player = 1; player <= playerCount; player++) {
-    $(`input[player=${player}]`).on("input", createScoreInputListener(player));
+    $(`input[player=${player}]:not(.player-name-input)`).on("input", createScoreInputListener(player));
   }
 }
 
@@ -281,7 +299,7 @@ function nextTurn() {
 
 function calculateScore(player, round) {
   let score = 0;
-  let inputs = $(`input[player=${player}]`);
+  let inputs = $(`input[player=${player}]:not(.player-name-input)`);
   for (let i = 0; i < round; i++) {
     let value = parseInt(inputs[i].value);
     if (isNaN(value)) {
@@ -381,7 +399,7 @@ function toggleDarkMode() {
 
 function saveGame() {
   let playerCount = parseInt($("#player-count").text());
-  let names = $("#playa-row").children("th:not(:first-child)").map((i, e) => e.innerText).get();
+  let names = $("#playa-row").children("th:not(:first-child)").find("input").map((i, e) => e.value).get();
   let roundCount = $("tr.round").length;
   let scores = $(".turn-input").map((i, e) => e.value).get(); 
   let stateString = playerCount + majorDelimiter 
@@ -421,6 +439,7 @@ function loadGame() {
     addPlayer();
     $("input.player-name").last().val(names[i]);
     $("input.player-name").last().trigger("input");
+    $("#playa-row").children().eq(i+1).find("input").val(names[i]);
   }
 
   nextTurn();
