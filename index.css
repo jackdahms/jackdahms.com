@@ -107,7 +107,7 @@ input::-webkit-inner-spin-button {
 }
 
 input[type=number] {
-  -moz-appearance: textfield; /* Firefox */
+  -moz-appearance: textfield;
 }
 
 .title-box {
@@ -167,4 +167,21 @@ tr.round:last-of-type td:last-child {
 .player-name-input:focus {
   background: #0066aa;
   color: #FFF;
+}
+
+/* Color square for player colors in dropdown */
+.player-color-square {
+  width: 16px;
+  height: 30px;
+  border: 1px solid #ccc;
+  margin-left: 8px;
+  flex-shrink: 0;
+  display: inline-block;
+  position: absolute;
+  right: 4px;
+  /*transform: translateY(50%);*/
+}
+
+.player-name-div {
+  position: relative;
 }

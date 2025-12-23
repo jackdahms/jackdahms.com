@@ -59,6 +59,17 @@ let theme = "light";
 let minorDelimiter = String.fromCharCode(28); // For delimiting pieces of information in one chunk, e.g. one name from another
 let majorDelimiter = String.fromCharCode(29); // For delimiting different pieces of info from one another, e.g. names from scores
 
+// Helper functions for color conversion
+function rgbToHex(rgb) {
+  let result = rgb.match(/\d+/g);
+  return '#' + ((1 << 24) + (parseInt(result[0]) << 16) + (parseInt(result[1]) << 8) + parseInt(result[2])).toString(16).slice(1);
+}
+
+function hexToRgb(hex) {
+  let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})` : null;
+}
+
 function getLatestRoundWithValidData(player) {
   let latestRoundWithValidData = 0
   let inputs = $(`input[player=${player}]`);
@@ -205,6 +216,44 @@ function addPlayer(e) {
     let dropdownItem = $("<div>").addClass(["input-group", "input-group-sm", "dropdown-item", "player-name-div"]);
     let prepend = $("<div>").addClass("input-group-prepend");
     let span = $("<span>").addClass("input-group-text").text("Player " + player + ":");
+    
+    // Create color square showing player's chart color
+    let colorSquare = $('<div>').addClass('player-color-square')
+      .css('background-color', window.chartColors[player-1])
+      .attr('data-player', player)
+      .on('click', function(e) {
+        e.stopPropagation();
+        let playerNum = parseInt($(this).attr('data-player'));
+        
+        // Create a simple color input
+        let colorInput = $('<input>').attr('type', 'color')
+          .val(rgbToHex(window.chartColors[playerNum-1]))
+          .css({position: 'absolute', opacity: 0, pointerEvents: 'none'});
+        
+        $('body').append(colorInput);
+        colorInput[0].click();
+        
+        colorInput.on('change', function() {
+          let newColor = $(this).val();
+          let rgbColor = hexToRgb(newColor);
+          
+          // Update the color square
+          colorSquare.css('background-color', rgbColor);
+          
+          // Update the chart color
+          window.chartColors[playerNum-1] = rgbColor;
+          if (config.data.datasets[playerNum-1]) {
+            config.data.datasets[playerNum-1].backgroundColor = rgbColor;
+            config.data.datasets[playerNum-1].borderColor = rgbColor;
+          }
+          chart.update();
+          saveGame();
+          
+          // Clean up
+          $(this).remove();
+        });
+      });
+    
     let dropdownInput = $("<input>").addClass(["form-control", "player-name"]).attr({"type": "text", "aria-label": "small", value: "Playa " + player});
     dropdownInput.on("input", function() {
       let player = parseInt($(this).prev().text().split(" ")[1]);
@@ -216,7 +265,7 @@ function addPlayer(e) {
       chart.update();
       saveGame();
     });
-    dropdownItem.append(prepend.append(span)).append(dropdownInput);
+    dropdownItem.append(prepend.append(span)).append(dropdownInput).append(colorSquare);
     dropdownItem.insertBefore($(".dropdown-menu").children().last());
   }
   chart.update();
