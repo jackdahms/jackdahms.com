@@ -1,33 +1,151 @@
-#container {
-    position: relative;
-}
-
-#container canvas, #overlay {
-    position: absolute;
-}
-
-a, a:visited {
-    color: yellow;
-    font-size: 10vh;
-    margin-left: 20vw;
-    margin-top: 70vh;
-    outline: none;
-    position: absolute;
-    text-decoration: none;
-}
-
-a:hover {
-    text-decoration: underline;
-}
-
 body {
-    margin: 0px;
+  font-family: helvetica, arial, sans-serif;
 }
 
-html {
-    height: 100%;
+h1, h2, h3 {
+  font-style: italic;
+  color: #007bff;
+  display: inline;
 }
 
-img {
-    display: none;
+td {
+  text-align: right;
+}
+
+td:first-child {
+  padding-left: 3px
+}
+
+td:nth-child(2n + 1) {
+  padding-right: 1%;
+  border-right: 1px solid #CCC;
+}
+
+th {
+  background: #004477;
+  color: #EEE;
+  text-align: right;
+}
+
+tr:nth-child(2n+4) > td {
+  background-color: #EEE; 
+}
+
+.turn-input {
+  font-family: courier, monospace;
+  text-align: right;
+  min-width: 40px;
+  width: 90%;
+  max-width: 70px;
+  height: 1.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.dropdown-menu {
+  width: 12em;
+}
+
+.round-td {
+  color: #004477;
+}
+
+.subcol {
+  display: inline-block;
+  transform: rotate(-45deg);
+}
+
+#heada-row {
+  height: 3em;
+}
+
+#heada-row > th:nth-child(2n + 1) {
+  padding-right: 1%;
+}
+
+#playa-row > th {
+  padding-right: 10px
+}
+
+/*
+ * Fix settings to bottom left and glitch to bottom right
+ */
+#dropdown {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+}
+#glitch-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+}
+
+/*
+ * Rounded corners in table header
+ */
+#playa-row > th:first-child {
+  border-top-left-radius: 5px;
+}
+#playa-row > th:last-child {
+  border-top-right-radius: 5px;
+}
+#heada-row > th:first-child {
+  border-bottom-left-radius: 5px;
+}
+#heada-row > th:last-child {
+  border-bottom-right-radius: 5px;
+}
+
+/*
+ * Hide arrows on number inputs
+ */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield; /* Firefox */
+}
+
+.title-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  align-self: center;
+  width: fit-content;
+  margin: 0 auto 1rem auto;
+}
+
+.title-box h1 {
+  margin-bottom: 0;
+}
+
+.title-box a {
+  font-size: 0.9rem;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Add left border to the first cell in each round row */
+tr.round td:first-child {
+  border-left: 1px solid #CCC;
+}
+
+/* Bottom border and rounded corners for last row */
+tr.round:last-of-type td {
+  border-bottom: 1px solid #CCC;
+}
+
+tr.round:last-of-type td:first-child {
+  border-bottom-left-radius: 5px;
+}
+
+tr.round:last-of-type td:last-child {
+  border-bottom-right-radius: 5px;
 }
