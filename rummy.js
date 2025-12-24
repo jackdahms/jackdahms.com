@@ -70,6 +70,35 @@ function hexToRgb(hex) {
   return result ? `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})` : null;
 }
 
+function hsvToRgb(h, s, v) {
+  let r, g, b;
+  let i = Math.floor(h * 6);
+  let f = h * 6 - i;
+  let p = v * (1 - s);
+  let q = v * (1 - f * s);
+  let t = v * (1 - (1 - f) * s);
+  switch (i % 6) {
+    case 0: r = v, g = t, b = p; break;
+    case 1: r = q, g = v, b = p; break;
+    case 2: r = p, g = v, b = t; break;
+    case 3: r = p, g = q, b = v; break;
+    case 4: r = t, g = p, b = v; break;
+    case 5: r = v, g = p, b = q; break;
+  }
+  return `rgb(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)})`;
+}
+
+// Helper functions for color conversion
+function rgbToHex(rgb) {
+  let result = rgb.match(/\d+/g);
+  return '#' + ((1 << 24) + (parseInt(result[0]) << 16) + (parseInt(result[1]) << 8) + parseInt(result[2])).toString(16).slice(1);
+}
+
+function hexToRgb(hex) {
+  let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})` : null;
+}
+
 function getLatestRoundWithValidData(player) {
   let latestRoundWithValidData = 0
   let inputs = $(`input[player=${player}]`);
@@ -225,32 +254,192 @@ function addPlayer(e) {
         e.stopPropagation();
         let playerNum = parseInt($(this).attr('data-player'));
         
-        // Create a simple color input
-        let colorInput = $('<input>').attr('type', 'color')
-          .val(rgbToHex(window.chartColors[playerNum-1]))
-          .css({position: 'absolute', opacity: 0, pointerEvents: 'none'});
+        // Create custom color picker modal
+        let modal = $('<div>').css({
+          position: 'fixed',
+          top: '0',
+          left: '0',
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          zIndex: '10000',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        });
         
-        $('body').append(colorInput);
-        colorInput[0].click();
+        let colorPicker = $('<div>').css({
+          backgroundColor: 'white',
+          padding: '20px',
+          borderRadius: '10px',
+          maxWidth: '300px',
+          maxHeight: '90vh',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+        });
         
-        colorInput.on('change', function() {
-          let newColor = $(this).val();
-          let rgbColor = hexToRgb(newColor);
+        // Title
+        let title = $('<div>').text('Choose Color').css({
+          textAlign: 'center',
+          marginBottom: '15px',
+          fontWeight: 'bold',
+          fontSize: '16px'
+        });
+        
+        // Color canvas for hue/saturation selection
+        let canvasContainer = $('<div>').css({
+          position: 'relative',
+          width: '200px',
+          height: '200px',
+          margin: '0 auto 15px auto',
+          border: '1px solid #ccc',
+          cursor: 'crosshair'
+        });
+        
+        let canvas = $('<canvas>').attr({width: 200, height: 200}).css({
+          width: '100%',
+          height: '100%',
+          display: 'block'
+        });
+        
+        let ctx = canvas[0].getContext('2d');
+        
+        // Draw color canvas
+        function drawColorCanvas() {
+          let imageData = ctx.createImageData(200, 200);
+          for (let x = 0; x < 200; x++) {
+            for (let y = 0; y < 200; y++) {
+              let hue = x / 200;
+              let saturation = 1 - (y / 200);
+              let value = 1;
+              let rgb = hsvToRgb(hue, saturation, value);
+              let match = rgb.match(/\d+/g);
+              let index = (y * 200 + x) * 4;
+              imageData.data[index] = parseInt(match[0]);     // R
+              imageData.data[index + 1] = parseInt(match[1]); // G  
+              imageData.data[index + 2] = parseInt(match[2]); // B
+              imageData.data[index + 3] = 255;               // A
+            }
+          }
+          ctx.putImageData(imageData, 0, 0);
+        }
+        
+        drawColorCanvas();
+        
+        // Brightness slider
+        let brightnessContainer = $('<div>').css({
+          marginBottom: '15px',
+          textAlign: 'center'
+        });
+        
+        let brightnessLabel = $('<div>').text('Brightness').css({
+          marginBottom: '5px',
+          fontSize: '14px'
+        });
+        
+        let brightnessSlider = $('<input>').attr({
+          type: 'range',
+          min: 0,
+          max: 100,
+          value: 100
+        }).css({
+          width: '180px'
+        });
+        
+        // Current color preview
+        let colorPreview = $('<div>').css({
+          width: '60px',
+          height: '30px',
+          border: '1px solid #ccc',
+          margin: '0 auto 15px auto',
+          borderRadius: '3px',
+          backgroundColor: window.chartColors[playerNum-1]
+        });
+        
+        let currentHue = 0;
+        let currentSaturation = 1;
+        let currentBrightness = 1;
+        
+        // Handle canvas clicks
+        canvasContainer.on('mousedown touchstart', function(e) {
+          e.preventDefault();
+          let rect = canvas[0].getBoundingClientRect();
+          let clientX = e.clientX || (e.originalEvent.touches && e.originalEvent.touches[0].clientX);
+          let clientY = e.clientY || (e.originalEvent.touches && e.originalEvent.touches[0].clientY);
+          let x = clientX - rect.left;
+          let y = clientY - rect.top;
+          
+          currentHue = Math.max(0, Math.min(1, x / 200));
+          currentSaturation = Math.max(0, Math.min(1, 1 - (y / 200)));
+          
+          updatePreview();
+        });
+        
+        // Handle brightness changes
+        brightnessSlider.on('input', function() {
+          currentBrightness = $(this).val() / 100;
+          updatePreview();
+        });
+        
+        function updatePreview() {
+          let color = hsvToRgb(currentHue, currentSaturation, currentBrightness);
+          colorPreview.css('backgroundColor', color);
+        }
+        
+        // Buttons
+        let buttonContainer = $('<div>').css({
+          textAlign: 'center'
+        });
+        
+        let selectBtn = $('<button>').text('Select').css({
+          padding: '8px 16px',
+          marginRight: '10px',
+          backgroundColor: '#007bff',
+          color: 'white',
+          border: 'none',
+          borderRadius: '3px',
+          cursor: 'pointer'
+        }).on('click', function() {
+          let selectedColor = hsvToRgb(currentHue, currentSaturation, currentBrightness);
           
           // Update the color square
-          colorSquare.css('background-color', rgbColor);
+          colorSquare.css('background-color', selectedColor);
           
           // Update the chart color
-          window.chartColors[playerNum-1] = rgbColor;
+          window.chartColors[playerNum-1] = selectedColor;
           if (config.data.datasets[playerNum-1]) {
-            config.data.datasets[playerNum-1].backgroundColor = rgbColor;
-            config.data.datasets[playerNum-1].borderColor = rgbColor;
+            config.data.datasets[playerNum-1].backgroundColor = selectedColor;
+            config.data.datasets[playerNum-1].borderColor = selectedColor;
           }
           chart.update();
           saveGame();
           
-          // Clean up
-          $(this).remove();
+          modal.remove();
+        });
+        
+        let cancelBtn = $('<button>').text('Cancel').css({
+          padding: '8px 16px',
+          backgroundColor: '#6c757d',
+          color: 'white',
+          border: 'none',
+          borderRadius: '3px',
+          cursor: 'pointer'
+        }).on('click', function() {
+          modal.remove();
+        });
+        
+        // Assemble picker
+        canvasContainer.append(canvas);
+        brightnessContainer.append(brightnessLabel).append(brightnessSlider);
+        buttonContainer.append(selectBtn).append(cancelBtn);
+        colorPicker.append(title).append(canvasContainer).append(brightnessContainer).append(colorPreview).append(buttonContainer);
+        modal.append(colorPicker);
+        $('body').append(modal);
+        
+        // Close modal when clicking outside
+        modal.on('click', function(e) {
+          if (e.target === modal[0]) {
+            modal.remove();
+          }
         });
       });
     
