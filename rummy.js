@@ -240,6 +240,11 @@ function addPlayer(e) {
       chart.update();
       saveGame();
     });
+
+    // Add focus listener to auto-select text when clicking
+    playerNameInput.on("focus", function() {
+      this.select();
+    });
     
     // Create dropdown player name input
     let dropdownItem = $("<div>").addClass(["input-group", "input-group-sm", "dropdown-item", "player-name-div"]);
@@ -561,7 +566,7 @@ function resetGame() {
 
   config.data.labels = [0];
   config.data.datasets = [];
-  roundsAddedToChart.clear(); // Clear the tracking when resetting
+  roundsAddedToChart = new Set([1]); // Reset to initial state
   chart.update();
   
   $(".player-name-div").remove();  
@@ -711,6 +716,11 @@ $(function() {
     addPlayer();
     addPlayer();
   }
-  
+
+  /*// Add focus listener to all player name inputs for auto-select
+  $(".player-name-input").on("focus", function() {
+    this.select();
+  });*/
+
   //toggleDarkMode();
 });
