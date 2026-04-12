@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bird Report</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="birds.css" />
+</head>
+<body>
+  <header>
+    <h1>Bird Report</h1>
+    <p class="subtitle">Rare sightings &amp; life list additions near you</p>
+    <a href="index.html" style="font-size: 0.8rem; opacity: 0.7; color: inherit; text-decoration: none; margin-top: 0.5rem; display: inline-block;">← back</a>
+  </header>
+
+  <main>
+    <section class="settings-panel">
+      <div class="settings-grid">
+        <div class="field">
+          <label for="api-key">eBird API Key</label>
+          <input type="password" id="api-key" placeholder="Your eBird API key" autocomplete="off" />
+          <span class="field-hint">Get one at <a href="https://ebird.org/api/keygen" target="_blank">ebird.org/api/keygen</a></span>
+        </div>
+        <div class="field">
+          <label for="region">Region Code</label>
+          <input type="text" id="region" value="US-WI-025" placeholder="e.g. US-WI-025" />
+          <span class="field-hint">e.g. Dane County, WI · <a href="https://ebird.org/region/world/regions" target="_blank">Find your region code</a></span>
+        </div>
+        <div class="field">
+          <label for="hours">Lookback (hours)</label>
+          <input type="number" id="hours" value="24" min="1" max="720" />
+          <span class="field-hint">Max 720 (30 days)</span>
+        </div>
+        <div class="field">
+          <label for="lifelist">My Life List CSV</label>
+          <label class="file-label" for="lifelist">
+            <span id="file-name">Choose MyEBirdData.csv</span>
+            <input type="file" id="lifelist" accept=".csv" />
+          </label>
+          <span class="field-hint">Download at <a href="https://ebird.org/downloadMyData" target="_blank">ebird.org/downloadMyData</a></span>
+        </div>
+      </div>
+      <button id="run-btn" class="run-btn">Run Report</button>
+    </section>
+
+    <section class="results-section" id="results-section" hidden>
+      <div class="results-header">
+        <div id="stats-bar" class="stats-bar"></div>
+        <div class="results-controls">
+          <div class="filter-tabs">
+            <button class="filter-tab" data-filter="all">All</button>
+            <button class="filter-tab" data-filter="rare">Rare Only</button>
+            <button class="filter-tab" data-filter="new">New For You</button>
+            <button class="filter-tab active" data-filter="notable">Rare or New</button>
+          </div>
+          <div class="view-toggle">
+            <button class="view-btn" data-view="list" title="List view">&#9776; List</button>
+            <button class="view-btn active" data-view="map" title="Map view">&#9679; Map</button>
+          </div>
+        </div>
+      </div>
+      <div id="results" class="results-list" hidden></div>
+      <div id="map" class="map-view"></div>
+    </section>
+
+    <div id="status" class="status-message" hidden></div>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="birds.js"></script>
+</body>
+</html>
