@@ -51,7 +51,7 @@ function parseLifeList(csvText) {
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(',');
     if (cols[idx]) {
-      names.add(cols[idx].trim().replace(/^"|"$/g, '').toLowerCase());
+      names.add(cols[idx].trim().replace(/^"|"$/g, '').replace(/\s*\(.*?\)$/, '').toLowerCase());
     }
   }
   return names;
@@ -86,7 +86,7 @@ function enrichObs(allObs, notableSet, lifeListSet, cutoff) {
     .map(obs => ({
       ...obs,
       isRare: notableSet.has(obs.speciesCode),
-      isNew:  lifeListSet.size > 0 && !lifeListSet.has(obs.comName.toLowerCase()),
+      isNew:  lifeListSet.size > 0 && !lifeListSet.has(obs.comName.toLowerCase().replace(/\s*\(.*?\)$/, '')),
       _date:  parseObsDate(obs.obsDt)
     }))
     .sort((a, b) => b._date - a._date);
@@ -97,8 +97,7 @@ function enrichObs(allObs, notableSet, lifeListSet, cutoff) {
 function applyFilter(obs, filter) {
   if (filter === 'rare')    return obs.filter(o => o.isRare);
   if (filter === 'new')     return obs.filter(o => o.isNew);
-  if (filter === 'notable') return obs.filter(o => o.isRare || o.isNew);
-  return obs;
+  return obs.filter(o => o.isRare || o.isNew);
 }
 
 function renderCard(obs) {
@@ -150,46 +149,42 @@ function renderResults(filter) {
 
 // ─── Map ──────────────────────────────────────────────────────────────────────
 
-function markerColor(obs) {
-  if (obs.isNew && obs.isRare) return '#2d7d32'; // dark green
-  if (obs.isNew)  return '#4a7c2f';              // green
-  if (obs.isRare) return '#c97d10';              // amber
-  return '#6b7280';                              // grey
+function checklistMarkerColor(birds) {
+  if (birds.some(o => o.isNew && o.isRare)) return '#2d7d32';
+  if (birds.some(o => o.isNew))  return '#4a7c2f';
+  if (birds.some(o => o.isRare)) return '#c97d10';
+  return '#6b7280';
 }
 
-function makeMarkerIcon(obs) {
-  const color = markerColor(obs);
-  const size = (obs.isNew || obs.isRare) ? 14 : 10;
+function checklistMarkerIcon(birds) {
+  const notable = birds.some(o => o.isNew || o.isRare);
+  const color = checklistMarkerColor(birds);
+  const size = notable ? 14 : 10;
   return L.divIcon({
     className: '',
-    html: `<div style="
-      width:${size}px;height:${size}px;
-      background:${color};
-      border:2px solid white;
-      border-radius:50%;
-      box-shadow:0 1px 4px rgba(0,0,0,0.4);
-    "></div>`,
+    html: `<div style="width:${size}px;height:${size}px;background:${color};border:2px solid white;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2]
   });
 }
 
-function popupHtml(obs) {
-  const badges = [];
-  if (obs.isNew)  badges.push('<span class="badge badge-new">New For You</span>');
-  if (obs.isRare) badges.push('<span class="badge badge-rare">Rare</span>');
-  const count = obs.howMany ? `${obs.howMany} bird${obs.howMany !== 1 ? 's' : ''}` : 'present';
-  const location = obs.locationPrivate ? 'Private Location' : (obs.locName || '');
-  const checklistLink = obs.subId
-    ? `<a href="https://ebird.org/checklist/${obs.subId}" target="_blank">View checklist →</a>`
+function checklistPopupHtml(birds) {
+  const first = birds[0];
+  const location = first.locationPrivate ? 'Private Location' : (first.locName || '');
+  const checklistLink = first.subId
+    ? `<a href="https://ebird.org/checklist/${first.subId}" target="_blank">View checklist →</a>`
     : '';
+  const birdRows = birds.map(obs => {
+    const badges = [];
+    if (obs.isNew)  badges.push('<span class="badge badge-new">New</span>');
+    if (obs.isRare) badges.push('<span class="badge badge-rare">Rare</span>');
+    const count = obs.howMany ? ` · ${obs.howMany}` : '';
+    return `<div class="popup-bird-row">${badges.join(' ')} <span class="popup-name">${obs.comName}</span><span class="popup-count">${count}</span></div>`;
+  }).join('');
   return `
     <div class="map-popup">
-      <div class="popup-badges">${badges.join(' ')}</div>
-      <div class="popup-name">${obs.comName}</div>
-      <div class="popup-sci">${obs.sciName}</div>
-      <div class="popup-meta">${count} · ${timeAgo(obs._date)}</div>
-      ${location ? `<div class="popup-meta">${location}</div>` : ''}
+      <div class="popup-meta">${location ? location + ' · ' : ''}${timeAgo(first._date)}</div>
+      <div class="popup-bird-list">${birdRows}</div>
       ${checklistLink ? `<div class="popup-link">${checklistLink}</div>` : ''}
     </div>`;
 }
@@ -211,9 +206,18 @@ function renderMap(filter) {
 
   const visible = applyFilter(allEnrichedObs, filter).filter(o => o.lat && o.lng);
 
-  visible.forEach(obs => {
-    L.marker([obs.lat, obs.lng], { icon: makeMarkerIcon(obs) })
-      .bindPopup(popupHtml(obs), { maxWidth: 260 })
+  // Group by checklist (subId), falling back to location
+  const checklists = {};
+  visible.forEach(o => {
+    const key = o.subId || `${o.lat},${o.lng}`;
+    if (!checklists[key]) checklists[key] = [];
+    checklists[key].push(o);
+  });
+
+  Object.values(checklists).forEach(birds => {
+    const rep = birds[0];
+    L.marker([rep.lat, rep.lng], { icon: checklistMarkerIcon(birds) })
+      .bindPopup(checklistPopupHtml(birds), { maxWidth: 280 })
       .addTo(markerLayer);
   });
 
@@ -248,14 +252,10 @@ function setView(view) {
 }
 
 function renderStats(obs) {
-  const rare  = obs.filter(o => o.isRare).length;
-  const isNew = obs.filter(o => o.isNew).length;
-  const lifeLoaded = obs.length > 0 && obs[0].isNew !== undefined && allEnrichedObs.some(o => o.isNew !== undefined);
+  const rareCount = [...new Set(obs.filter(o => o.isRare).map(o => o.speciesCode))].length;
+  const newCount  = [...new Set(obs.filter(o => o.isNew).map(o => o.speciesCode))].length;
 
-  let txt = `<strong>${obs.length}</strong> observation${obs.length !== 1 ? 's' : ''}`;
-  if (rare)    txt += ` &nbsp;·&nbsp; <span class="stat-rare">${rare} rare</span>`;
-  if (isNew)   txt += ` &nbsp;·&nbsp; <span class="stat-new">${isNew} new for you</span>`;
-  if (!lifeLoaded && rare === 0 && isNew === 0) txt += ' &nbsp;·&nbsp; <span class="stat-hint">(upload life list CSV to see new species)</span>';
+  const txt = `<span class="stat-rare">${rareCount} rare</span> &nbsp;·&nbsp; <span class="stat-new">${newCount} new for you</span>`;
 
   document.getElementById('stats-bar').innerHTML = txt;
 }
@@ -325,7 +325,26 @@ async function runReport() {
     regionBounds = regionInfo?.bounds ?? null;
     const notableSet = new Set(notableObs.map(o => o.speciesCode));
 
-    allEnrichedObs = enrichObs(allObs, notableSet, lifeListSet, cutoff);
+    const enrichedOnce = enrichObs(allObs, notableSet, lifeListSet, cutoff);
+
+    // Fan out per-species calls for rare or new species only
+    const notableSpecies = enrichedOnce.filter(o => o.isRare || o.isNew);
+    const uniqueCodes = [...new Set(notableSpecies.map(o => o.speciesCode))];
+    const detailResults = await Promise.all(
+      uniqueCodes.map(code =>
+        fetch(`${EBIRD_BASE}/data/obs/${region}/recent/${code}?back=${backDays}&detail=full`, {
+          headers: { 'X-eBirdApiToken': apiKey }
+        }).then(r => r.json()).catch(() => [])
+      )
+    );
+
+    const detailObs = detailResults.flat();
+    const detailEnriched = enrichObs(detailObs, notableSet, lifeListSet, cutoff);
+
+    // Replace notable species entries with detailed per-checklist observations
+    const notableCodes = new Set(uniqueCodes);
+    const baseObs = enrichedOnce.filter(o => !notableCodes.has(o.speciesCode));
+    allEnrichedObs = [...detailEnriched, ...baseObs].sort((a, b) => b._date - a._date);
 
     renderStats(allEnrichedObs);
     renderResults(currentFilter);

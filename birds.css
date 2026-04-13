@@ -280,11 +280,12 @@ main {
 /* Leaflet popup overrides */
 
 .map-popup { font-family: inherit; min-width: 180px; }
-.popup-badges { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
-.popup-name { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
-.popup-sci  { font-size: 0.78rem; font-style: italic; color: var(--text-muted); margin-bottom: 0.35rem; }
-.popup-meta { font-size: 0.8rem; color: var(--text-muted); }
-.popup-link { margin-top: 0.4rem; font-size: 0.8rem; }
+.popup-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.4rem; }
+.popup-bird-list { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.4rem; }
+.popup-bird-row { display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; }
+.popup-name { font-weight: 600; color: var(--text-primary); }
+.popup-count { color: var(--text-muted); font-size: 0.78rem; }
+.popup-link { font-size: 0.8rem; }
 
 /* ─── Observation Cards ─────────────────────────────────────────────────────── */
 
@@ -391,6 +392,20 @@ main {
 }
 
 /* ─── Print ──────────────────────────────────────────────────────────────────── */
+
+.bird-label {
+  background: white;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.bird-label::before { display: none; }
 
 @media print {
   header { background: black; -webkit-print-color-adjust: exact; }
