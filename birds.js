@@ -8,7 +8,7 @@ const LS_KEY_HOURS  = 'birdreport_hours';
 // ─── State ───────────────────────────────────────────────────────────────────
 
 let allEnrichedObs = [];
-let currentFilter  = 'notable';
+let currentFilter  = 'new';
 let currentView    = 'map';
 let leafletMap     = null;
 let markerLayer    = null;
@@ -61,18 +61,14 @@ function parseLifeList(csvText) {
 
 function parseObsDate(obsDt) {
   // eBird format: "2024-05-01 14:32" (local time, no TZ info)
-  // Treat as local time by replacing space with T
-  return new Date(obsDt.replace(' ', 'T'));
+  return Temporal.PlainDateTime.from(obsDt.replace(' ', 'T'));
 }
 
-function timeAgo(date) {
-  const diff = Date.now() - date.getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+function timeAgo(dt) {
+  const duration = Temporal.Now.plainDateTimeISO().since(dt, { largestUnit: 'days' });
+  if (duration.days >= 1)  return `${duration.days}d ago`;
+  if (duration.hours >= 1) return `${duration.hours}h ago`;
+  return `${duration.minutes}m ago`;
 }
 
 // ─── Enrichment ───────────────────────────────────────────────────────────────
@@ -80,8 +76,10 @@ function timeAgo(date) {
 function enrichObs(allObs, notableSet, lifeListSet, cutoff) {
   return allObs
     .filter(obs => {
-      const d = parseObsDate(obs.obsDt);
-      return !isNaN(d.getTime()) && d >= cutoff;
+      try {
+        const d = parseObsDate(obs.obsDt);
+        return Temporal.PlainDateTime.compare(d, cutoff) >= 0;
+      } catch { return false; }
     })
     .map(obs => ({
       ...obs,
@@ -89,7 +87,7 @@ function enrichObs(allObs, notableSet, lifeListSet, cutoff) {
       isNew:  lifeListSet.size > 0 && !lifeListSet.has(obs.comName.toLowerCase().replace(/\s*\(.*?\)$/, '')),
       _date:  parseObsDate(obs.obsDt)
     }))
-    .sort((a, b) => b._date - a._date);
+    .sort((a, b) => Temporal.PlainDateTime.compare(b._date, a._date));
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
@@ -100,35 +98,43 @@ function applyFilter(obs, filter) {
   return obs.filter(o => o.isRare || o.isNew);
 }
 
-function renderCard(obs) {
-  const badges = [];
-  if (obs.isNew)  badges.push('<span class="badge badge-new">New For You</span>');
-  if (obs.isRare) badges.push('<span class="badge badge-rare">Rare</span>');
-
+function renderSightingRow(obs) {
   const count = obs.howMany ? `${obs.howMany} bird${obs.howMany !== 1 ? 's' : ''}` : 'present';
   const location = obs.locationPrivate ? 'Private Location' : (obs.locName || 'Unknown location');
   const timeStr = timeAgo(obs._date);
   const checklistLink = obs.subId
-    ? `<a class="checklist-link" href="https://ebird.org/checklist/${obs.subId}" target="_blank">View checklist →</a>`
+    ? `<a class="checklist-link" href="https://ebird.org/checklist/${obs.subId}" target="_blank">checklist →</a>`
     : '';
 
-  const cardClass = ['obs-card', obs.isNew ? 'card-new' : '', obs.isRare ? 'card-rare' : ''].filter(Boolean).join(' ');
+  return `
+    <div class="obs-sighting">
+      <span class="sighting-time">${timeStr}</span>
+      <span class="meta-sep">·</span>
+      <span class="sighting-location">${location}</span>
+      <span class="meta-sep">·</span>
+      <span class="sighting-count">${count}</span>
+      ${checklistLink ? `<span class="meta-sep">·</span>${checklistLink}` : ''}
+    </div>`;
+}
+
+function renderSpeciesRow(sightings) {
+  const rep = sightings[0];
+  const badges = [];
+  if (rep.isNew)  badges.push('<span class="badge badge-new">New For You</span>');
+  if (rep.isRare) badges.push('<span class="badge badge-rare">Rare</span>');
+
+  const cardClass = ['obs-card', rep.isNew ? 'card-new' : '', rep.isRare ? 'card-rare' : ''].filter(Boolean).join(' ');
 
   return `
     <div class="${cardClass}">
       <div class="card-badges">${badges.join('')}</div>
       <div class="card-body">
         <div class="card-name">
-          <span class="common-name">${obs.comName}</span>
-          <span class="sci-name">${obs.sciName}</span>
+          <span class="common-name">${rep.comName}</span>
+          <span class="sci-name">${rep.sciName}</span>
         </div>
-        <div class="card-meta">
-          <span class="meta-count">${count}</span>
-          <span class="meta-sep">·</span>
-          <span class="meta-location">${location}</span>
-          <span class="meta-sep">·</span>
-          <span class="meta-time">${timeStr}</span>
-          ${checklistLink}
+        <div class="obs-sightings">
+          ${sightings.map(renderSightingRow).join('')}
         </div>
       </div>
     </div>`;
@@ -141,7 +147,15 @@ function renderResults(filter) {
   if (visible.length === 0) {
     resultsEl.innerHTML = '<p class="empty-state">No observations match this filter.</p>';
   } else {
-    resultsEl.innerHTML = visible.map(renderCard).join('');
+    // Group by species, deduplicating by checklist (subId) within each species
+    const speciesMap = new Map();
+    visible.forEach(obs => {
+      if (!speciesMap.has(obs.speciesCode)) speciesMap.set(obs.speciesCode, new Map());
+      const checklists = speciesMap.get(obs.speciesCode);
+      const key = obs.subId || `${obs.lat},${obs.lng},${obs.obsDt}`;
+      if (!checklists.has(key)) checklists.set(key, obs);
+    });
+    resultsEl.innerHTML = [...speciesMap.values()].map(m => [...m.values()]).map(renderSpeciesRow).join('');
   }
 
   if (currentView === 'map') renderMap(filter);
@@ -150,9 +164,8 @@ function renderResults(filter) {
 // ─── Map ──────────────────────────────────────────────────────────────────────
 
 function checklistMarkerColor(birds) {
-  if (birds.some(o => o.isNew && o.isRare)) return '#2d7d32';
-  if (birds.some(o => o.isNew))  return '#4a7c2f';
   if (birds.some(o => o.isRare)) return '#c97d10';
+  if (birds.some(o => o.isNew))  return '#4a7c2f';
   return '#6b7280';
 }
 
@@ -293,7 +306,7 @@ async function runReport() {
 
   const hours   = Math.min(hoursRaw, 720);
   const backDays = Math.min(Math.ceil(hours / 24), 30);
-  const cutoff  = new Date(Date.now() - hours * 3600 * 1000);
+  const cutoff  = Temporal.Now.plainDateTimeISO().subtract({ hours });
 
   // Persist settings
   localStorage.setItem(LS_KEY_APIKEY, apiKey);
@@ -327,24 +340,26 @@ async function runReport() {
 
     const enrichedOnce = enrichObs(allObs, notableSet, lifeListSet, cutoff);
 
-    // Fan out per-species calls for rare or new species only
-    const notableSpecies = enrichedOnce.filter(o => o.isRare || o.isNew);
-    const uniqueCodes = [...new Set(notableSpecies.map(o => o.speciesCode))];
-    const detailResults = await Promise.all(
-      uniqueCodes.map(code =>
+    // Use notableObs directly — it already has full detail and all individual sightings.
+    // Per-species fetches lag behind the notable endpoint, so we'd miss recently-flagged birds.
+    const notableEnriched = enrichObs(notableObs, notableSet, lifeListSet, cutoff);
+
+    // Per-species fetches only for "new for you" species not already covered by notableObs
+    const newOnlyCodes = lifeListSet.size > 0
+      ? [...new Set(enrichedOnce.filter(o => o.isNew && !notableSet.has(o.speciesCode)).map(o => o.speciesCode))]
+      : [];
+    const newDetailResults = await Promise.all(
+      newOnlyCodes.map(code =>
         fetch(`${EBIRD_BASE}/data/obs/${region}/recent/${code}?back=${backDays}&detail=full`, {
           headers: { 'X-eBirdApiToken': apiKey }
         }).then(r => r.json()).catch(() => [])
       )
     );
+    const newDetailEnriched = enrichObs(newDetailResults.flat(), notableSet, lifeListSet, cutoff);
 
-    const detailObs = detailResults.flat();
-    const detailEnriched = enrichObs(detailObs, notableSet, lifeListSet, cutoff);
-
-    // Replace notable species entries with detailed per-checklist observations
-    const notableCodes = new Set(uniqueCodes);
-    const baseObs = enrichedOnce.filter(o => !notableCodes.has(o.speciesCode));
-    allEnrichedObs = [...detailEnriched, ...baseObs].sort((a, b) => b._date - a._date);
+    const coveredCodes = new Set([...notableSet, ...newOnlyCodes]);
+    const baseObs = enrichedOnce.filter(o => !coveredCodes.has(o.speciesCode));
+    allEnrichedObs = [...notableEnriched, ...newDetailEnriched, ...baseObs].sort((a, b) => Temporal.PlainDateTime.compare(b._date, a._date));
 
     renderStats(allEnrichedObs);
     renderResults(currentFilter);

@@ -376,10 +376,32 @@ main {
 .meta-sep { opacity: 0.4; }
 
 .checklist-link {
-  margin-left: 0.25rem;
   font-size: 0.78rem;
   color: var(--blue-link);
   white-space: nowrap;
+}
+
+.obs-sightings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.25rem;
+}
+
+.obs-sighting {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.sighting-location {
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Empty state */
